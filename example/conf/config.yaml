@@ -1,0 +1,11 @@
+defaults:
+  - _self_
+  - db: mysql
+  - override hydra/sweeper: list
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    mode: grid
+    params:
+      driver: mysql, mysql2

@@ -1,0 +1,12 @@
+MANIFEST.in
+README.md
+setup.py
+hydra_list_sweeper.egg-info/PKG-INFO
+hydra_list_sweeper.egg-info/SOURCES.txt
+hydra_list_sweeper.egg-info/dependency_links.txt
+hydra_list_sweeper.egg-info/requires.txt
+hydra_list_sweeper.egg-info/top_level.txt
+hydra_plugins/list_sweeper_plugin/__init__.py
+hydra_plugins/list_sweeper_plugin/list_sweeper.py
+hydra_plugins/list_sweeper_plugin/py.typed
+tests/test_example_sweeper_plugin.py
