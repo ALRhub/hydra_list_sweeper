@@ -1,0 +1,7 @@
+defaults:
+  - _self_
+  - db: mysql
+  - override hydra/sweeper: example
+
+hydra:
+  mode: MULTIRUN

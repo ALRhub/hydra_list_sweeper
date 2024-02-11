@@ -29,39 +29,33 @@ log = logging.getLogger(__name__)
 @dataclass
 class LauncherConfig:
     _target_: str = (
-        "hydra_plugins.list_sweeper_plugin.list_sweeper.ListSweeper"
+        "hydra_plugins.example_sweeper_plugin.example_sweeper.ExampleSweeper"
     )
-    list_params: DictConfig = DictConfig({})
-    grid_params: DictConfig = DictConfig({})
+    # max number of jobs to run in the same batch.
+    max_batch_size: Optional[int] = None
+    foo: int = 10
+    bar: str = "abcde"
 
 
-ConfigStore.instance().store(group="hydra/sweeper", name="list", node=LauncherConfig)
+ConfigStore.instance().store(group="hydra/sweeper", name="example", node=LauncherConfig)
 
 
-def flatten_tuple(original_tuple):
-    new_tuple = ()
-    for item in original_tuple:
-        if isinstance(item, str):
-            new_tuple += (item,)
-        elif isinstance(item, list):
-            new_tuple += tuple(item)
-    return new_tuple
-
-class ListSweeper(Sweeper):
-    def __init__(self, list_params: DictConfig, grid_params: DictConfig):
+class ExampleSweeper(Sweeper):
+    def __init__(self, max_batch_size: int, foo: str, bar: str):
+        self.max_batch_size = max_batch_size
         self.config: Optional[DictConfig] = None
         self.launcher: Optional[Launcher] = None
         self.hydra_context: Optional[HydraContext] = None
         self.job_results = None
-        self.list_params = list_params
-        self.grid_params = grid_params
+        self.foo = foo
+        self.bar = bar
 
     def setup(
-            self,
-            *,
-            hydra_context: HydraContext,
-            task_function: TaskFunction,
-            config: DictConfig,
+        self,
+        *,
+        hydra_context: HydraContext,
+        task_function: TaskFunction,
+        config: DictConfig,
     ) -> None:
         self.config = config
         self.launcher = Plugins.instance().instantiate_launcher(
@@ -72,7 +66,8 @@ class ListSweeper(Sweeper):
     def sweep(self, arguments: List[str]) -> Any:
         assert self.config is not None
         assert self.launcher is not None
-        print(f"Sweep output dir : {self.config.hydra.sweep.dir}")
+        log.info(f"ExampleSweeper (foo={self.foo}, bar={self.bar}) sweeping")
+        log.info(f"Sweep output dir : {self.config.hydra.sweep.dir}")
 
         # Save sweep run config in top level sweep working directory
         sweep_dir = Path(self.config.hydra.sweep.dir)
@@ -81,8 +76,8 @@ class ListSweeper(Sweeper):
 
         parser = OverridesParser.create()
         parsed = parser.parse_overrides(arguments)
-        grid_lists = []
-        # manage overrides
+
+        lists = []
         for override in parsed:
             if override.is_sweep_override():
                 # Sweepers must manipulate only overrides that return true to is_sweep_override()
@@ -95,41 +90,36 @@ class ListSweeper(Sweeper):
                 sweep_choices = override.sweep_string_iterator()
                 key = override.get_key_element()
                 sweep = [f"{key}={val}" for val in sweep_choices]
-                grid_lists.append(sweep)
+                lists.append(sweep)
             else:
                 key = override.get_key_element()
                 value = override.get_value_element_as_str()
-                grid_lists.append([f"{key}={value}"])
+                lists.append([f"{key}={value}"])
+        batches = list(itertools.product(*lists))
 
-        # manage grid params
-        for key in self.grid_params:
-            values = self.grid_params[key]
-            # parse string
-            values = values.replace(" ", "")
-            values = values.replace("[", "")
-            values = values.replace("]", "")
-            values = values.split(",")
-            grid_lists.append([f"{key}={value}" for value in values])
+        # some sweepers will launch multiple batches.
+        # for such sweepers, it is important that they pass the proper initial_job_idx when launching
+        # each batch. see example below.
+        # This is required to ensure that working that the job gets a unique job id
+        # (which in turn can be used for other things, like the working directory)
+        def chunks(
+            lst: Sequence[Sequence[str]], n: Optional[int]
+        ) -> Iterable[Sequence[Sequence[str]]]:
+            """
+            Split input to chunks of up to n items each
+            """
+            if n is None or n == -1:
+                n = len(lst)
+            for i in range(0, len(lst), n):
+                yield lst[i : i + n]
 
-        list_lists = []
-        for key in self.list_params:
-            values = self.list_params[key]
-            # parse string
-            values = values.replace(" ", "")
-            values = values.replace("[", "")
-            values = values.replace("]", "")
-            values = values.split(",")
-            for idx, value in enumerate(values):
-                if len(list_lists) <= idx:
-                    list_lists.append([])
-                list_lists[idx].append(f"{key}={value}")
-        batch = list(itertools.product(*grid_lists, list_lists))
-        # the list params are flattened to be part of the tuple
-        batch = [flatten_tuple(x) for x in batch]
+        chunked_batches = list(chunks(batches, self.max_batch_size))
 
-        # move lists as part of the tuples
-
-        # batch = [tuple(x) for x in lists]
+        returns = []
         initial_job_idx = 0
-        returns = [self.launcher.launch(batch, initial_job_idx)]
+        for batch in chunked_batches:
+            self.validate_batch_is_legal(batch)
+            results = self.launcher.launch(batch, initial_job_idx=initial_job_idx)
+            initial_job_idx += len(batch)
+            returns.append(results)
         return returns
