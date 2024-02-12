@@ -1,6 +1,7 @@
 # List Sweeper plugin for Hydra
 
-Sweeper plugin for Hydra which creates a list option additionally to the cartesian product ("grid").
+Sweeper plugin for Hydra which creates a list option additionally to the cartesian product ("grid"), 
+which allows to sweep over the zipped list of parameters. 
 This allows to test only a subset of the cartesian product and it is useful for small hyperparameter searches.
 
 ## Installation
