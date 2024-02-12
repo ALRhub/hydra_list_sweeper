@@ -13,7 +13,7 @@ from hydra.core.plugins import Plugins
 from hydra.plugins.launcher import Launcher
 from hydra.plugins.sweeper import Sweeper
 from hydra.types import TaskFunction
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, ListConfig
 
 # IMPORTANT:
 # If your plugin imports any module that takes more than a fraction of a second to import,
@@ -115,16 +115,25 @@ class ListSweeper(Sweeper):
             grid_keys.append(key)
 
         list_lists = []
+        values_length = None
         for key in self.list_params:
             if key in grid_keys:
                 log.warning(f"List key {key} is also a grid key. The list key will be ignored.")
                 continue
             values = self.list_params[key]
-            # parse string
-            values = values.replace(" ", "")
-            values = values.replace("[", "")
-            values = values.replace("]", "")
-            values = values.split(",")
+            if isinstance(values, str):
+                # parse string
+                values = values.replace(" ", "")
+                values = values.replace("[", "")
+                values = values.replace("]", "")
+                values = values.split(",")
+            elif isinstance(values, ListConfig):
+                values = values._content
+            # check if all lists have the same length
+            if values_length is None:
+                values_length = len(values)
+            elif len(values) != values_length:
+                raise ValueError(f"List key {key} has different length than other list keys")
             for idx, value in enumerate(values):
                 if len(list_lists) <= idx:
                     list_lists.append([])
