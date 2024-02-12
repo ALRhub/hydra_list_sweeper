@@ -82,6 +82,7 @@ class ListSweeper(Sweeper):
         parser = OverridesParser.create()
         parsed = parser.parse_overrides(arguments)
         grid_lists = []
+        grid_keys = []
         # manage overrides
         for override in parsed:
             if override.is_sweep_override():
@@ -100,6 +101,7 @@ class ListSweeper(Sweeper):
                 key = override.get_key_element()
                 value = override.get_value_element_as_str()
                 grid_lists.append([f"{key}={value}"])
+            grid_keys.append(key)
 
         # manage grid params
         for key in self.grid_params:
@@ -110,9 +112,13 @@ class ListSweeper(Sweeper):
             values = values.replace("]", "")
             values = values.split(",")
             grid_lists.append([f"{key}={value}" for value in values])
+            grid_keys.append(key)
 
         list_lists = []
         for key in self.list_params:
+            if key in grid_keys:
+                log.warning(f"List key {key} is also a grid key. The list key will be ignored.")
+                continue
             values = self.list_params[key]
             # parse string
             values = values.replace(" ", "")
@@ -123,9 +129,12 @@ class ListSweeper(Sweeper):
                 if len(list_lists) <= idx:
                     list_lists.append([])
                 list_lists[idx].append(f"{key}={value}")
-        batch = list(itertools.product(*grid_lists, list_lists))
-        # the list params are flattened to be part of the tuple
-        batch = [flatten_tuple(x) for x in batch]
+        if len(list_lists) == 0:
+            batch = list(itertools.product(*grid_lists))
+        else:
+            batch = list(itertools.product(*grid_lists, list_lists))
+            # the list params are flattened to be part of the tuple
+            batch = [flatten_tuple(x) for x in batch]
 
         # move lists as part of the tuples
 

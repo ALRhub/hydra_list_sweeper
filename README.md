@@ -1,31 +1,27 @@
 # Hydra example Launcher plugin
 
-This plugin provides an example for how to write a custom Sweeper for Hydra.
-The provided example has a custom configuration for the sweeper that takes overrides a few parameters:
+Sweeper plugin for Hydra wich creates a list option additionally to the cartesian product ("grid").
+This allows to test only a subset of the cartesian product. It uses the a similar syntax as the standard sweeper:
 ```yaml
-_target_: hydra_plugins.example_sweeper_plugin.example_sweeper.ExampleSweeper
-# max number of jobs to run in the same batch.
-max_batch_size: null
-foo: 10
-bar: abcde
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    # standard grid search
+    grid_params:
+      env: 5_clubs_juggling, balancing_stick
+    # additional list sweeper
+    list_params:
+      algorithm.lr: 0.001, 0.0001
+      algorithm.beta_1: 0.9, 0.99
 ```
-
-#### Example app using custom sweeper:
+This configuration will create 4 jobs:
 ```text
-$ python example/my_app.py -m db=mysql,postgresql
-[2019-11-14 11:42:47,941][HYDRA] ExampleSweeper (foo=10, bar=abcde) sweeping
-[2019-11-14 11:42:47,941][HYDRA] Sweep output dir : multirun/2019-11-14/11-42-47
-[2019-11-14 11:42:47,942][HYDRA] Launching 2 jobs locally
-[2019-11-14 11:42:47,942][HYDRA]        #0 : db=mysql
-db:
-  driver: mysql
-  pass: secret
-  user: omry
+env=5_clubs_juggling, algorithm.lr=0.001, algorithm.beta_1=0.9
+env=5_clubs_juggling, algorithm.lr=0.0001, algorithm.beta_1=0.99
+env=balancing_stick, algorithm.lr=0.001, algorithm.beta_1=0.9
+env=balancing_stick, algorithm.lr=0.0001, algorithm.beta_1=0.99
+``` 
 
-[2019-11-14 11:42:48,011][HYDRA]        #1 : db=postgresql
-db:
-  driver: postgresql
-  pass: drowssap
-  timeout: 10
-  user: postgres_user
-```
+Basically, it grids over all grid params, creating the standard cartesian product, 
+and then for each of these combinations, it creates a job for each of the list params.
+ 
