@@ -1,7 +1,18 @@
-# Hydra example Launcher plugin
+# List Sweeper plugin for Hydra
 
 Sweeper plugin for Hydra which creates a list option additionally to the cartesian product ("grid").
-This allows to test only a subset of the cartesian product. 
+This allows to test only a subset of the cartesian product and it is useful for small hyperparameter searches.
+
+## Installation
+Clone this repository, navigate to its root folder `hydra_list_sweeper` and run:
+```bash
+pip install .
+```
+This will install the plugin in your current environment. Right now, there is no way to install it from PyPi, but this will be added in the future.
+
+You can check if the plugin is installed by adding `--info plugins` to your command line.
+The plugin should be listed in the output as `hydra_plugins.list_sweeper_plugin.list_sweeper`.
+
 In order to enable this plugin, you need to override the default sweeper in your configuration file:
 ```yaml
 defaults:
@@ -10,7 +21,9 @@ defaults:
   - override hydra/sweeper: list
 ```
 
-It uses the a similar syntax as the standard sweeper, but instead of a `params` key, it uses `grid_params` and `list_params`:
+## Usage
+
+`List sweeper`  uses the a similar syntax as the standard sweeper, but instead of a `params` key, it uses `grid_params` and `list_params`:
 ```yaml
 hydra:
   mode: MULTIRUN
@@ -71,9 +84,3 @@ will produce the same results as the first example, but epsilon will be set to 1
 If you remove the `list_params` section, it will behave exactly as the standard grid sweeper (at least it should do, if you find a bug, please report it).
 
 
-## Installation
-Clone this repository, navigate to its root folder `hydra_list_sweeper` and run:
-```bash
-pip install .
-```
-This will install the plugin in your current environment. Right now, there is no way to install it from PyPi, but this will be added in the future.
