@@ -17,32 +17,72 @@ Requires-Dist: hydra-core
 
 # Hydra example Launcher plugin
 
-This plugin provides an example for how to write a custom Sweeper for Hydra.
-The provided example has a custom configuration for the sweeper that takes overrides a few parameters:
+Sweeper plugin for Hydra which creates a list option additionally to the cartesian product ("grid").
+This allows to test only a subset of the cartesian product. 
+In order to enable this plugin, you need to override the default sweeper in your configuration file:
 ```yaml
-_target_: hydra_plugins.example_sweeper_plugin.example_sweeper.ExampleSweeper
-# max number of jobs to run in the same batch.
-max_batch_size: null
-foo: 10
-bar: abcde
+defaults:
+  - _self_
+  # override this to use the new list sweeper:
+  - override hydra/sweeper: list
 ```
 
-#### Example app using custom sweeper:
+It uses the a similar syntax as the standard sweeper, but instead of a `params` key, it uses `grid_params` and `list_params`:
+```yaml
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    # standard grid search
+    grid_params:
+      env: 5_clubs_juggling, balancing_stick
+    # additional list sweeper
+    list_params:
+      algorithm.lr: 0.001, 0.0001
+      algorithm.beta_1: [0.9, 0.99]  # both notations work
+```
+This configuration will create 4 jobs:
 ```text
-$ python example/my_app.py -m db=mysql,postgresql
-[2019-11-14 11:42:47,941][HYDRA] ExampleSweeper (foo=10, bar=abcde) sweeping
-[2019-11-14 11:42:47,941][HYDRA] Sweep output dir : multirun/2019-11-14/11-42-47
-[2019-11-14 11:42:47,942][HYDRA] Launching 2 jobs locally
-[2019-11-14 11:42:47,942][HYDRA]        #0 : db=mysql
-db:
-  driver: mysql
-  pass: secret
-  user: omry
+env=5_clubs_juggling, algorithm.lr=0.001, algorithm.beta_1=0.9
+env=5_clubs_juggling, algorithm.lr=0.0001, algorithm.beta_1=0.99
+env=balancing_stick, algorithm.lr=0.001, algorithm.beta_1=0.9
+env=balancing_stick, algorithm.lr=0.0001, algorithm.beta_1=0.99
+``` 
 
-[2019-11-14 11:42:48,011][HYDRA]        #1 : db=postgresql
-db:
-  driver: postgresql
-  pass: drowssap
-  timeout: 10
-  user: postgres_user
+Basically, it grids over all grid params, creating the standard cartesian product, 
+and then for each of these combinations, it creates a job for each of the list params.
+You can additionally overwrite single values with command line arguments, and even define your grid_params in the command line:
+```yaml
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    # additional list sweeper
+    list_params:
+      algorithm.lr: 0.001, 0.0001
+      algorithm.beta_1: [0.9, 0.99]  # both notations work
 ```
+Combined with this command
+```bash
+python my_app.py env=5_clubs_juggling,balancing_stick
+```
+ will produce the same results as the first example. Also, you can override configs with the command line and the grid_params:
+
+```yaml
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    # standard grid search
+    grid_params:
+      env: 5_clubs_juggling, balancing_stick
+    # additional list sweeper
+    list_params:
+      algorithm.lr: 0.001, 0.0001
+      algorithm.beta_1: [0.9, 0.99]  # both notations work
+```
+ Combined with this command:
+```bash
+python my_app.py algorithm.epsilon=1.0e-4
+```
+
+will produce the same results as the first example, but epsilon will be set to 1.0e-4 for all jobs.
+
+If you remove the `list_params` section, it will behave exactly as the standard grid sweeper (at least it should do, if you find a bug, please report it).
