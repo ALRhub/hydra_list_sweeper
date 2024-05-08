@@ -6,9 +6,6 @@ hydra_list_sweeper.egg-info/SOURCES.txt
 hydra_list_sweeper.egg-info/dependency_links.txt
 hydra_list_sweeper.egg-info/requires.txt
 hydra_list_sweeper.egg-info/top_level.txt
-hydra_plugins/example_sweeper_plugin/__init__.py
-hydra_plugins/example_sweeper_plugin/example_sweeper.py
-hydra_plugins/example_sweeper_plugin/py.typed
 hydra_plugins/list_sweeper_plugin/__init__.py
 hydra_plugins/list_sweeper_plugin/list_sweeper.py
 hydra_plugins/list_sweeper_plugin/py.typed
