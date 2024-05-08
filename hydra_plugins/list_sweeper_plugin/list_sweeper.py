@@ -106,11 +106,7 @@ class ListSweeper(Sweeper):
         # manage grid params
         for key in self.grid_params:
             values = self.grid_params[key]
-            # parse string
-            values = values.replace(" ", "")
-            values = values.replace("[", "")
-            values = values.replace("]", "")
-            values = values.split(",")
+            values = self.parse(key, values)
             grid_lists.append([f"{key}={value}" for value in values])
             grid_keys.append(key)
 
@@ -121,14 +117,7 @@ class ListSweeper(Sweeper):
                 log.warning(f"List key {key} is also a grid key. The list key will be ignored.")
                 continue
             values = self.list_params[key]
-            if isinstance(values, str):
-                # parse string
-                values = values.replace(" ", "")
-                values = values.replace("[", "")
-                values = values.replace("]", "")
-                values = values.split(",")
-            elif isinstance(values, ListConfig):
-                values = values._content
+            values = self.parse(key, values)
             # check if all lists have the same length
             if values_length is None:
                 values_length = len(values)
@@ -151,3 +140,22 @@ class ListSweeper(Sweeper):
         initial_job_idx = 0
         returns = [self.launcher.launch(batch, initial_job_idx)]
         return returns
+
+    def parse(self, key, values):
+        if isinstance(values, int) or isinstance(values, float) or isinstance(values, bool):
+            values = [values]
+        elif isinstance(values, str):
+            if "," in values:
+                # parse string
+                values = values.replace(" ", "")
+                values = values.replace("[", "")
+                values = values.replace("]", "")
+                values = values.split(",")
+            else:
+                # only single string value
+                values = [values]
+        elif isinstance(values, ListConfig):
+            values = values._content
+        else:
+            raise ValueError(f"Cannot parse '{values}' for list key {key}")
+        return values
