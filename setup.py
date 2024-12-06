@@ -6,7 +6,7 @@ with open("README.md") as fh:
     LONG_DESC = fh.read()
     setup(
         name="hydra-list-sweeper",
-        version="1.0.0",
+        version="1.0.1",
         author="Philipp Dahlinger",
         author_email="philipp.dahlinger@kit.edu",
         description="List Hydra Sweeper plugin",
