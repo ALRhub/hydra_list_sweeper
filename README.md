@@ -5,11 +5,10 @@ which allows to sweep over the zipped list of parameters.
 This allows to test only a subset of the cartesian product and it is useful for small hyperparameter searches.
 
 ## Installation
-Clone this repository, navigate to its root folder `hydra_list_sweeper` and run:
 ```bash
-pip install .
+pip install hydra-list-sweeper
 ```
-This will install the plugin in your current environment. Right now, there is no way to install it from PyPi, but this will be added in the future.
+This will install the plugin in your current environment.
 
 You can check if the plugin is installed by adding `--info plugins` to your command line.
 The plugin should be listed in the output as `hydra_plugins.list_sweeper_plugin.list_sweeper`.
