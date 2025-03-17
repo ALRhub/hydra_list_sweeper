@@ -1,4 +1,5 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import copy
 from dataclasses import dataclass
 
 import itertools
@@ -33,6 +34,7 @@ class LauncherConfig:
     )
     list_params: DictConfig = DictConfig({})
     grid_params: DictConfig = DictConfig({})
+    ablative_params: ListConfig = ListConfig([])
 
 
 ConfigStore.instance().store(group="hydra/sweeper", name="list", node=LauncherConfig)
@@ -48,13 +50,14 @@ def flatten_tuple(original_tuple):
     return new_tuple
 
 class ListSweeper(Sweeper):
-    def __init__(self, list_params: DictConfig, grid_params: DictConfig):
+    def __init__(self, list_params: DictConfig, grid_params: DictConfig, ablative_params: ListConfig):
         self.config: Optional[DictConfig] = None
         self.launcher: Optional[Launcher] = None
         self.hydra_context: Optional[HydraContext] = None
         self.job_results = None
         self.list_params = list_params
         self.grid_params = grid_params
+        self.ablative_params = ablative_params
 
     def setup(
             self,
@@ -134,9 +137,31 @@ class ListSweeper(Sweeper):
             # the list params are flattened to be part of the tuple
             batch = [flatten_tuple(x) for x in batch]
 
-        # move lists as part of the tuples
+        # copy with ablative params
+        if len(self.ablative_params) > 0:
+            complete_batch = copy.deepcopy(batch) # list which builds up with ablative, starting with the original batch
+            for ablative_dict in self.ablative_params:
+                new_batch = copy.deepcopy(batch)
+                # create lists out of tuples
+                new_batch = [list(x) for x in new_batch]
+                # replace the overwritten keys
+                for job in new_batch:
+                    for key, value in ablative_dict.items():
+                        found_key = False
+                        for idx, key_param_str in enumerate(job):
+                            job_key = key_param_str.split("=")[0]
+                            if key == job_key:
+                                found_key = True
+                                # overwrite with new value
+                                job[idx] = f"{key}={ablative_dict[key]}"
+                        if not found_key:
+                            # add it to the job
+                            job.append(f"{key}={ablative_dict[key]}")
+                    # finished ablated job, can be added to the complete batch
+                    complete_batch.append(tuple(job))
+            # overwrite the batch with the ablative batch
+            batch = complete_batch
 
-        # batch = [tuple(x) for x in lists]
         initial_job_idx = 0
         returns = [self.launcher.launch(batch, initial_job_idx)]
         return returns
